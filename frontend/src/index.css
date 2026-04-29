@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    @apply font-sans text-gray-900 bg-[#F8FAFC] antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  ::selection { @apply bg-navy-200 text-navy-900; }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/60 rounded-2xl;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .glass-card-dark {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 24px rgba(0,0,0,0.12);
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-navy-600 to-navy-400 bg-clip-text text-transparent;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-2 bg-navy-700 hover:bg-navy-800 text-white font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98];
+  }
+  .btn-accent {
+    @apply inline-flex items-center gap-2 bg-brand-accent hover:bg-green-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 text-gray-600 hover:text-navy-700 hover:bg-gray-100 font-medium px-4 py-2 rounded-xl transition-all duration-200;
+  }
+  .input-field {
+    @apply w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navy-500/20 focus:border-navy-400 transition-all duration-150;
+  }
+  .section-label {
+    @apply text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3;
+  }
+  .step-card {
+    @apply bg-white border border-gray-100 rounded-2xl p-6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .text-white\/18 {
+    color: rgba(255, 255, 255, 0.18);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
+  .text-balance { text-wrap: balance; }
+}
