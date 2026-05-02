@@ -1,0 +1,253 @@
+================================================================================
+  CERTIFY GENIE — ICAI AI HACKATHON SEASON 5
+  10-MINUTE PRESENTATION PLAN
+================================================================================
+
+THE SINGLE NARRATIVE THREAD
+----------------------------
+"Every CA firm wastes 30–45 minutes per certificate.
+ Certify Genie cuts it to under 60 seconds —
+ without ever exposing client data to AI."
+
+Everything you say must support this one sentence.
+
+================================================================================
+  10-MINUTE SCRIPT
+================================================================================
+
+[00:00 – 00:30]  THE HOOK
+--------------------------
+Open with a question directed at the audience — no slides yet:
+
+  "How many of you have generated a Net Worth certificate this month?
+   How long did it take?"
+
+Wait 2 seconds. Then:
+
+  "We built something that does it in under 60 seconds."
+
+--------------------------------------------------------------------------------
+
+[00:30 – 01:30]  THE PROBLEM (make them feel it)
+-------------------------------------------------
+- 3.5 lakh+ CAs in India. Certificate generation is daily, repetitive,
+  high-stakes work.
+- Manual flow: open balance sheet → find the right figures → pick the correct
+  NW method → type the certificate → review → sign → send.
+  That's 30–45 minutes minimum.
+- Error risk: wrong method for entity type (LLP vs Company), misread figures,
+  wrong financial year — all lead to professional liability.
+- No existing tool addresses this end-to-end for ICAI-format certificates.
+
+KEY LINE:
+  "The problem isn't that CAs are slow.
+   It's that a task this repetitive has no business being manual in 2025."
+
+--------------------------------------------------------------------------------
+
+[01:30 – 07:00]  THE LIVE DEMO  ← THIS IS YOUR SCORE
+------------------------------------------------------
+Run in this exact sequence — each step reveals a new differentiator.
+
+  STEP 1 — Upload (30 sec)
+  Drop in a real-looking balance sheet PDF.
+  Say: "PDF or Excel — doesn't matter."
+
+  STEP 2 — Redaction prompt appears (45 sec)
+  "Before this document touches the AI, we auto-redact CIN, PAN, GSTIN,
+   Aadhaar, and mobile numbers. The AI never sees raw client data.
+   This is our privacy-first architecture — and this alone sets us apart
+   from every generic AI tool."
+  Show the manual draw-box feature for 10 seconds.
+  "If there's anything else sensitive, the CA draws a box over it."
+
+  STEP 3 — AI extracts (45 sec)
+  While it loads, say:
+  "Claude AI is reading the redacted document right now, extracting figures
+   with source citations."
+  When results appear, point to the citation trail:
+  "Every figure is linked back to the exact line it came from.
+   Full audit trail — essential for professional accountability."
+
+  STEP 4 — Certificate type + Entity + Method (45 sec)
+  Select Net Worth → select Company → show the 7 method cards.
+  "This is where most tools fail. Net Worth means different things for an LLP
+   vs a Company vs a SEBI-listed entity. We implement 7 calculation methods —
+   Book Value, Tangible NW, Companies Act method, SEBI LODR, and more.
+   The AI recommends the right one."
+
+  STEP 5 — Live preview (30 sec)
+  "Edit values, change narrative, add UDIN, set a PDF password —
+   and the certificate updates in real time on the right."
+
+  STEP 6 — Download + Email (30 sec)
+  Click Generate. Show PDF download + DOCX + Email to Client button.
+  "PDF and Word document. One click to send to the client.
+   Certificate number auto-generated, history saved."
+
+  STEP 7 — YoY / Ratio Analysis (15 sec)
+  "Bonus — year-on-year comparison and ratio analysis are built in
+   for the CA who wants to go deeper."
+
+--------------------------------------------------------------------------------
+
+[07:00 – 08:00]  TECHNOLOGY (hit these 3 points)
+-------------------------------------------------
+1. PRIVACY-FIRST PIPELINE
+   Redact PII → send clean doc to Claude → extract → generate.
+   Data never stored after session.
+
+2. CLAUDE SONNET 4.6 WITH STRUCTURED EXTRACTION
+   Not a chat wrapper. Custom prompts per certificate type, per entity type,
+   per NW method. Vision fallback for scanned PDFs.
+
+3. STACK
+   FastAPI backend, React + TypeScript frontend, python-docx for ICAI-format
+   output, no database — zero setup, zero data risk.
+
+KEY LINE:
+  "We didn't build a chatbot.
+   We built a domain-specific workflow engine
+   that happens to use AI for the hard part."
+
+--------------------------------------------------------------------------------
+
+[08:00 – 09:00]  BUSINESS CASE
+-------------------------------
+
+  Metric                  | Current          | With Certify Genie
+  ------------------------|------------------|--------------------
+  Time per certificate    | 30–45 min        | < 60 seconds
+  Error risk              | High (manual)    | Low (validated + cited)
+  PII exposure to AI      | —                | Zero
+  CA firm daily capacity  | ~10–12 certs/day | 100+
+
+MARKET SIZE:
+  3.5L CAs × avg 5 certificates/day × Rs.500 saved per cert
+  = Rs.875 crore/year in recovered CA time
+
+USE CASES BEYOND CA FIRMS:
+  Banks verifying submitted certificates, RERA compliance,
+  tender submissions, NBFCs
+
+--------------------------------------------------------------------------------
+
+[09:00 – 09:40]  INNOVATION SUMMARY (3 points, fast)
+-----------------------------------------------------
+1. PRIVACY-FIRST AI — industry first for certificate generation
+2. ENTITY-AWARE NW METHODS — not a generic extractor,
+   understands ICAI guidelines deeply
+3. FULL CITATION TRAIL — AI accountability for financial documents
+   (a regulatory requirement waiting to happen)
+
+--------------------------------------------------------------------------------
+
+[09:40 – 10:00]  CLOSE
+-----------------------
+  "Certify Genie doesn't replace the CA.
+   It eliminates the 45 minutes of clerical work
+   so the CA can spend that time on advice
+   that actually needs their expertise.
+   That's what AI should do in finance."
+
+================================================================================
+  SCORING BREAKDOWN
+================================================================================
+
+  Criterion                  | Your Strongest Card
+  ---------------------------|----------------------------------------------
+  Technology Implementation  | Privacy-first pipeline, 7-method NW engine,
+                             | vision fallback, structured Claude prompts
+  Industry Impact            | 30–45 min → 60 sec, 3.5L CA market,
+                             | reduces professional liability
+  Business Relevance         | Every CA firm has this problem today,
+                             | no existing solution in the market
+  Presentation Skills        | Live demo > slides, audience question opener,
+                             | single narrative thread throughout
+  Use Case & Relevance       | ICAI-format output, UDIN, entity types —
+                             | shows deep domain research
+  Innovation                 | PII-first architecture + entity-aware method
+                             | selection is genuinely novel
+
+================================================================================
+  PRE-DEMO CHECKLIST
+================================================================================
+
+  [ ] Backend running locally, tested with sample PDF
+  [ ] Sample PDF ready — clear figures, multiple pages
+  [ ] Browser tab open on Home page, font size at 125% for visibility
+  [ ] Disable browser notifications / Do Not Disturb ON
+  [ ] Know the extraction time for your sample (~8–12 sec) — narrate the wait
+  [ ] Have "Certificate Ready" screen screenshot as backup if anything breaks
+
+================================================================================
+  QUICK ANSWERS FOR JUDGE QUESTIONS
+================================================================================
+
+  "Why not just use ChatGPT?"
+  → "ChatGPT sees your client's raw financial data. We redact it first.
+     That's not a feature — for a CA, that's a professional obligation."
+
+  "How accurate is the extraction?"
+  → "Every figure has a source citation. The CA sees exactly where each
+     number came from before signing anything."
+
+  "What's the business model?"
+  → "SaaS — per-certificate or monthly firm subscription. The CA recovers
+     the cost in the first 2 certificates of the day."
+
+  "What about scanned PDFs?"
+  → "We fall back to vision mode automatically. Claude reads the image."
+
+================================================================================
+  REMEMBER: The demo is your score.
+  Never apologise for loading times — narrate them as features happening live.
+================================================================================
+
+================================================================================
+  LIBRARIES & DEPENDENCIES (Full Reference)
+================================================================================
+
+BACKEND (Python)
+-----------------
+  Library                | Version   | Purpose
+  -----------------------|-----------|------------------------------------------
+  fastapi                | 0.115.5   | REST API framework
+  uvicorn                | 0.32.1    | ASGI server to run FastAPI
+  anthropic              | 0.40.0    | Claude Sonnet AI API — financial extraction
+  PyMuPDF (fitz)         | 1.24.14   | PDF text extraction, visual redaction,
+                         |           | page-to-image rendering for Vision mode
+  pdfplumber             | 0.11.4    | Fallback PDF parsing
+  Pillow                 | 11.0.0    | ICAI logo image processing (webp → PNG)
+  reportlab              | 4.2.5     | Generating ICAI-format PDF certificates
+  python-docx            | 1.1.2     | Generating editable DOCX certificates
+  openpyxl               | 3.1.5     | Reading Excel balance sheets (.xlsx/.xls)
+  pypdf                  | 5.1.0     | PDF utilities
+  pydantic               | 2.10.3    | Request/response data validation & schemas
+  pydantic-settings      | 2.6.1     | Environment config management
+  python-multipart       | 0.0.12    | File upload handling (multipart/form-data)
+  python-dotenv          | 1.0.1     | Loading .env environment variables
+  aiofiles               | 24.1.0    | Async file I/O
+  apscheduler            | 3.10.4    | Scheduled cleanup jobs for uploaded files
+
+FRONTEND (JavaScript / TypeScript)
+------------------------------------
+  Library                | Version   | Purpose
+  -----------------------|-----------|------------------------------------------
+  React                  | 18.3.1    | UI framework
+  TypeScript             | 5.6.3     | Type-safe JavaScript
+  Vite                   | 5.4.11    | Build tool and dev server
+  Tailwind CSS           | 3.4.15    | Utility-first styling
+  Framer Motion          | 11.12.0   | Animations and page transitions
+  pdfjs-dist             | 4.4.168   | In-browser PDF rendering for redaction editor
+  Axios                  | 1.7.9     | HTTP client for API calls
+  React Router DOM       | 6.28.0    | Client-side routing
+  Lucide React           | 0.460.0   | Icon library
+  React Hot Toast        | 2.4.1     | Toast notifications
+  React Dropzone         | 14.3.5    | Drag-and-drop file upload
+
+KEY JUDGE TALKING POINT ON STACK:
+  "No database. Zero data risk. Everything lives in-memory per session
+   and is cleaned up after. A CA's client data never persists on our servers."
+
+================================================================================

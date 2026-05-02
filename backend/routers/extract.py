@@ -21,6 +21,7 @@ from models.response_models import (
     RedactionSummary,
 )
 from services.redaction import RedactionService
+from services.redaction_pdf import redact_pdf_bytes, apply_manual_boxes
 from services.pdf_extractor import extract_text_from_pdf, pdf_pages_to_base64_images
 from services.excel_extractor import extract_text_from_excel
 from services.claude_service import extract_financial_data_text, extract_financial_data_vision
@@ -151,9 +152,50 @@ async def extract_data(file_id: str, request: ExtractRequest):
     redaction_svc = RedactionService()
     extraction_mode = "text"
     tokens_used = 0
+    visual_counts: dict[str, int] | None = None  # filled when manual_boxes path taken
 
     try:
-        if ext == ".pdf":
+        if ext == ".pdf" and request.manual_boxes:
+            # ── Manual redaction path ────────────────────────────────────────
+            # Apply auto visual redaction + user-drawn boxes, then re-extract
+            logger.info("Manual redaction path — %d user boxes", len(request.manual_boxes))
+            with open(file_path, "rb") as f:
+                pdf_bytes = f.read()
+
+            auto_bytes, visual_counts = redact_pdf_bytes(pdf_bytes)
+            final_bytes = apply_manual_boxes(auto_bytes, request.manual_boxes)
+
+            import fitz as _fitz
+            tmp_doc = _fitz.open(stream=final_bytes, filetype="pdf")
+            raw_text = ""
+            for page in tmp_doc:
+                raw_text += page.get_text("text")
+            tmp_doc.close()
+
+            is_scanned = len(raw_text.strip()) < 50
+            if is_scanned:
+                logger.info("Redacted PDF has minimal text — using Vision mode")
+                extraction_mode = "vision"
+                import io as _io, base64 as _b64
+                page_images = []
+                tmp_doc2 = _fitz.open(stream=final_bytes, filetype="pdf")
+                for page in tmp_doc2:
+                    mat = _fitz.Matrix(150 / 72, 150 / 72)
+                    pix = page.get_pixmap(matrix=mat)
+                    img_bytes = pix.tobytes("png")
+                    page_images.append(_b64.b64encode(img_bytes).decode())
+                    if len(page_images) >= 5:
+                        break
+                tmp_doc2.close()
+                if not page_images:
+                    raise HTTPException(status_code=422, detail="Could not render redacted PDF pages.")
+                raw_data, tokens_used = extract_financial_data_vision(page_images)
+            else:
+                # Text is already clean — no token redaction needed
+                raw_data, tokens_used = extract_financial_data_text(raw_text)
+
+        elif ext == ".pdf":
+            # ── Standard PDF path (no manual boxes) ─────────────────────────
             raw_text, is_scanned = extract_text_from_pdf(file_path)
             if is_scanned:
                 logger.info("Scanned PDF detected — using Claude Vision mode")
@@ -243,7 +285,19 @@ async def extract_data(file_id: str, request: ExtractRequest):
     )
 
     validation = _validate(raw_data)
-    redaction_summary = RedactionSummary(**redaction_svc.summary)
+    if visual_counts is not None:
+        total = sum(visual_counts.values())
+        redaction_summary = RedactionSummary(
+            cin_count=visual_counts.get("CIN", 0),
+            pan_count=visual_counts.get("PAN", 0),
+            aadhaar_count=visual_counts.get("AADHAAR", 0),
+            mobile_count=visual_counts.get("MOBILE", 0),
+            email_count=visual_counts.get("EMAIL", 0),
+            gstin_count=visual_counts.get("GSTIN", 0),
+            total_redacted=total,
+        )
+    else:
+        redaction_summary = RedactionSummary(**redaction_svc.summary)
 
     # Store session data for certificate generation
     _session_store[file_id] = {

@@ -23,7 +23,8 @@ import { ExtractionConfidenceModal } from '../components/ExtractionConfidenceMod
 import { EmailModal } from '../components/EmailModal'
 import { YoYComparisonModal } from '../components/YoYComparisonModal'
 import { extractData, generateCertificate, fetchNetWorthMethods, saveToHistory } from '../api/client'
-import type { CertificateType, CertificateEditorState, EntityType, NWMethod } from '../types'
+import { ManualRedactionModal } from '../components/ManualRedactionModal'
+import type { CertificateType, CertificateEditorState, EntityType, NWMethod, RedactionPayload } from '../types'
 
 const CERT_LABELS: Record<CertificateType, string> = {
   net_worth: 'Net Worth Certificate',
@@ -50,6 +51,12 @@ export default function Generate() {
   const [showConfidence, setShowConfidence] = useState(false)
   const [showEmail, setShowEmail] = useState(false)
   const [showYoY, setShowYoY] = useState(false)
+
+  // Manual redaction state
+  const [pendingFileId, setPendingFileId]             = useState<string | null>(null)
+  const [pendingFile, setPendingFile]                 = useState<File | null>(null)
+  const [showRedactPrompt, setShowRedactPrompt]       = useState(false)
+  const [showManualRedaction, setShowManualRedaction] = useState(false)
 
   // Initialise editor state when entering Step 5 (Preview & Edit)
   useEffect(() => {
@@ -132,12 +139,20 @@ export default function Generate() {
     updateSession({ editorState: merged })
   }
 
-  // ── Auto-extract right after upload (called by FileUpload via onAfterUpload) ──
-  const handleAutoExtract = async (fileId: string) => {
+  // ── Called by FileUpload after upload succeeds — show redaction prompt ──────
+  const handleAfterUpload = (fileId: string, file: File) => {
+    setPendingFileId(fileId)
+    setPendingFile(file)
+    setShowRedactPrompt(true)
+  }
+
+  // ── Run extraction (with optional manual boxes) ───────────────────────────
+  const handleAutoExtract = async (fileId: string, manualBoxes: RedactionPayload[] = []) => {
+    setShowRedactPrompt(false)
     updateSession({ extractionResponse: null })
     setExtracting(true)
     try {
-      const result = await extractData(fileId)
+      const result = await extractData(fileId, session.certificateType ?? 'net_worth', manualBoxes)
       updateSession({ extractionResponse: result })
       setStep(2)
       toast.success('Document analysed — select certificate type')
@@ -433,7 +448,7 @@ export default function Generate() {
                 <div className="step-card mb-6">
                   <h2 className="text-lg font-bold text-navy-900 text-center mb-1">Upload Financial Document</h2>
                   <p className="text-xs text-gray-500 text-center mb-6">PDF, XLSX or XLS · Up to 10 MB</p>
-                  <FileUpload onAfterUpload={handleAutoExtract} />
+                  <FileUpload onAfterUpload={handleAfterUpload} />
                 </div>
                 {session.uploadResponse && (
                   <motion.div
@@ -770,6 +785,71 @@ export default function Generate() {
             )}
           </AnimatePresence>
         </div>
+      )}
+
+      {/* ── Manual Redaction Prompt ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showRedactPrompt && !showManualRedaction && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(10, 22, 40, 0.80)', backdropFilter: 'blur(12px)' }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.22 }}
+              className="bg-white rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl text-center"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-5">
+                <ShieldCheck className="w-7 h-7 text-emerald-600" />
+              </div>
+              <h3 className="font-bold text-gray-900 text-base mb-2">Add manual redaction?</h3>
+              <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                Auto-redaction (CIN, PAN, GSTIN, Aadhaar…) has already been applied.
+                You can draw additional boxes over any other sensitive content.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowRedactPrompt(false)
+                    setShowManualRedaction(true)
+                  }}
+                  className="w-full font-bold py-3 rounded-xl text-white text-sm transition-all"
+                  style={{ background: 'linear-gradient(135deg, #2ECC71, #27AE60)' }}
+                >
+                  Yes, let me redact
+                </button>
+                <button
+                  onClick={() => pendingFileId && handleAutoExtract(pendingFileId, [])}
+                  className="w-full font-semibold py-3 rounded-xl text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                  No, continue
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Manual Redaction Modal ────────────────────────────────────────────── */}
+      {pendingFileId && pendingFile && (
+        <ManualRedactionModal
+          open={showManualRedaction}
+          file={pendingFile}
+          fileId={pendingFileId}
+          onClose={() => {
+            setShowManualRedaction(false)
+            if (pendingFileId) handleAutoExtract(pendingFileId, [])
+          }}
+          onConfirm={(boxes) => {
+            setShowManualRedaction(false)
+            if (pendingFileId) handleAutoExtract(pendingFileId, boxes)
+          }}
+        />
       )}
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}

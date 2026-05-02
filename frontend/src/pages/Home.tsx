@@ -2,12 +2,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
   Shield, Zap, FileCheck, ArrowRight, TrendingUp, BarChart2,
-  Upload, X, CheckCircle, AlertCircle, Loader2, Lock, FileText,
-  Sparkles, ChevronRight, Eye, GitBranch,
+  Upload, X, CheckCircle, AlertCircle, Loader2, Lock,
+  Sparkles, ChevronRight, Eye, GitBranch, Layers,
+  GitCompareArrows, Briefcase, Mail, History,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { ManualRedactionModal } from '../components/ManualRedactionModal'
+import { applyManualRedaction, uploadFile } from '../api/client'
+import type { RedactionPayload } from '../types'
 
-type RedactState = 'idle' | 'loading' | 'done' | 'clean' | 'error'
+type RedactState = 'idle' | 'uploading' | 'preview' | 'loading' | 'done' | 'clean' | 'error'
 
 interface RedactCounts { CIN: number; PAN: number; GSTIN: number; AADHAAR: number; MOBILE: number; EMAIL: number; Total: number }
 
@@ -17,23 +21,35 @@ function parseRedactSummary(header: string): RedactCounts {
 }
 
 function RedactModal({ onClose }: { onClose: () => void }) {
-  const [file, setFile] = useState<File | null>(null)
-  const [state, setState] = useState<RedactState>('idle')
-  const [summary, setSummary] = useState<RedactCounts | null>(null)
-  const [errorMsg, setErrorMsg] = useState<string>('')
-  const [dragging, setDragging] = useState(false)
+  const [file, setFile]               = useState<File | null>(null)
+  const [fileId, setFileId]           = useState<string | null>(null)
+  const [state, setState]             = useState<RedactState>('idle')
+  const [summary, setSummary]         = useState<RedactCounts | null>(null)
+  const [errorMsg, setErrorMsg]       = useState<string>('')
+  const [dragging, setDragging]       = useState(false)
+  const [showViewer, setShowViewer]   = useState(false)
+  const [manualBoxCount, setManualBoxCount] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = (f: File) => {
+  const handleFile = async (f: File) => {
     if (!f.name.toLowerCase().endsWith('.pdf')) {
       setErrorMsg('Only PDF files are supported.')
       setState('error')
       return
     }
     setFile(f)
-    setState('idle')
+    setState('uploading')
     setErrorMsg('')
     setSummary(null)
+    try {
+      const resp = await uploadFile(f)
+      setFileId(resp.file_id)
+      setState('preview')
+      setShowViewer(true)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Upload failed')
+      setState('error')
+    }
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -43,41 +59,58 @@ function RedactModal({ onClose }: { onClose: () => void }) {
     if (f) handleFile(f)
   }
 
-  const handleRedact = async () => {
-    if (!file) return
+  const handleRedactAndDownload = async (boxes: RedactionPayload[]) => {
+    if (!fileId || !file) return
+    setManualBoxCount(boxes.length)
+    setShowViewer(false)
     setState('loading')
-    setSummary(null)
-    setErrorMsg('')
     try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch('/api/redact-check', { method: 'POST', body: form })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error((data as { detail?: string }).detail || `Server error ${res.status}`)
-      }
-      const summaryHeader = res.headers.get('X-Redaction-Summary') || ''
+      const { blob, summary: hdr } = await applyManualRedaction(fileId, boxes)
+      const summaryHeader = hdr
       const totalMatch = summaryHeader.match(/Total:(\d+)/)
       const total = totalMatch ? parseInt(totalMatch[1]) : 0
 
-      if (total === 0) {
-        setState('clean')
-        return
-      }
-
-      const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = file.name.replace(/\.pdf$/i, '_redacted.pdf')
       a.click()
       URL.revokeObjectURL(url)
-      setSummary(parseRedactSummary(summaryHeader))
-      setState('done')
+
+      if (total === 0 && boxes.length === 0) {
+        setState('clean')
+      } else {
+        setSummary(parseRedactSummary(summaryHeader))
+        setState('done')
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
       setState('error')
     }
+  }
+
+  const handleReset = () => {
+    setFile(null)
+    setFileId(null)
+    setState('idle')
+    setSummary(null)
+    setErrorMsg('')
+    setShowViewer(false)
+    setManualBoxCount(0)
+  }
+
+  // Full-screen viewer — rendered outside the small modal
+  if (showViewer && fileId && file) {
+    return (
+      <ManualRedactionModal
+        open={true}
+        file={file}
+        fileId={fileId}
+        confirmLabel="Redact & Download"
+        onClose={() => handleRedactAndDownload([])}
+        onConfirm={handleRedactAndDownload}
+      />
+    )
   }
 
   return (
@@ -112,43 +145,56 @@ function RedactModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="p-6">
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => inputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 mb-4 ${
-              dragging ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <input
-              ref={inputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
-            />
-            <div className={`w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center transition-colors ${file ? 'bg-emerald-100' : 'bg-gray-100'}`}>
-              {file ? <FileText className="w-5 h-5 text-emerald-600" /> : <Upload className="w-5 h-5 text-gray-400" />}
+          {(state === 'idle' || state === 'error') && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 mb-4 ${
+                dragging ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <input
+                ref={inputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+              />
+              <div className="w-10 h-10 rounded-xl bg-gray-100 mx-auto mb-3 flex items-center justify-center">
+                <Upload className="w-5 h-5 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">Drop PDF here or <span className="text-navy-600 underline underline-offset-2">browse</span></p>
+              <p className="text-xs text-gray-400 mt-1">PDF only · Max 20 MB</p>
             </div>
-            {file ? (
-              <p className="text-sm font-semibold text-gray-800">{file.name}</p>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-gray-700">Drop PDF here or <span className="text-navy-600 underline underline-offset-2">browse</span></p>
-                <p className="text-xs text-gray-400 mt-1">PDF only · Max 20 MB</p>
-              </>
-            )}
-          </div>
+          )}
 
           <AnimatePresence mode="wait">
+            {state === 'uploading' && (
+              <motion.div key="uploading" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-4 mb-4">
+                <Loader2 className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Uploading &amp; scanning…</p>
+                  <p className="text-xs text-blue-600 mt-0.5">{file?.name}</p>
+                </div>
+              </motion.div>
+            )}
+            {state === 'loading' && (
+              <motion.div key="loading" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-4 mb-4">
+                <Loader2 className="w-4 h-4 text-blue-500 animate-spin flex-shrink-0" />
+                <p className="text-sm font-semibold text-blue-800">Applying redactions…</p>
+              </motion.div>
+            )}
             {state === 'clean' && (
               <motion.div key="clean" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 mb-4">
                 <span className="text-xl">🎉</span>
                 <div>
                   <p className="text-sm font-semibold text-emerald-800">You're all clear — AI-ready!</p>
-                  <p className="text-xs text-emerald-700 mt-0.5">No sensitive identifiers found. Safe to process with AI.</p>
+                  <p className="text-xs text-emerald-700 mt-0.5">No sensitive identifiers found.</p>
                 </div>
               </motion.div>
             )}
@@ -158,9 +204,9 @@ function RedactModal({ onClose }: { onClose: () => void }) {
                 <div className="flex items-center gap-2 mb-2.5">
                   <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                   <p className="text-sm font-semibold text-green-800">Redacted PDF downloaded!</p>
-                  <span className="ml-auto text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{summary.Total} redacted</span>
+                  <span className="ml-auto text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{summary.Total} auto-redacted</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5 mb-2">
                   {(['CIN', 'PAN', 'GSTIN', 'AADHAAR', 'MOBILE', 'EMAIL'] as const).map((key) => (
                     <div key={key} className={`rounded-lg px-2.5 py-1.5 flex items-center justify-between ${summary[key] > 0 ? 'bg-green-100' : 'bg-white/60'}`}>
                       <span className={`text-[10px] font-bold tracking-wide ${summary[key] > 0 ? 'text-green-700' : 'text-gray-400'}`}>{key}</span>
@@ -168,6 +214,13 @@ function RedactModal({ onClose }: { onClose: () => void }) {
                     </div>
                   ))}
                 </div>
+                <div className={`rounded-lg px-2.5 py-1.5 flex items-center justify-between ${manualBoxCount > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-white/60'}`}>
+                  <span className={`text-[10px] font-bold tracking-wide ${manualBoxCount > 0 ? 'text-blue-700' : 'text-gray-400'}`}>MANUAL BOXES</span>
+                  <span className={`text-xs font-black ${manualBoxCount > 0 ? 'text-blue-800' : 'text-gray-300'}`}>{manualBoxCount}</span>
+                </div>
+                <button onClick={handleReset} className="mt-3 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors">
+                  Redact another file
+                </button>
               </motion.div>
             )}
             {state === 'error' && (
@@ -179,19 +232,7 @@ function RedactModal({ onClose }: { onClose: () => void }) {
             )}
           </AnimatePresence>
 
-          <button
-            onClick={handleRedact}
-            disabled={!file || state === 'loading'}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm active:scale-[0.99]"
-          >
-            {state === 'loading' ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Scanning &amp; Redacting…</>
-            ) : (
-              <><Shield className="w-4 h-4" /> Redact &amp; Download</>
-            )}
-          </button>
-
-          <p className="text-xs text-gray-400 text-center mt-3">No AI · No storage · Client-side download only</p>
+          <p className="text-xs text-gray-400 text-center mt-2">Auto + manual redaction · No AI · Secure download</p>
         </div>
       </motion.div>
     </div>
@@ -217,36 +258,73 @@ const CERT_TYPES = [
     iconBg: 'bg-emerald-50',
     iconColor: 'text-emerald-600',
   },
+  {
+    icon: Briefcase,
+    title: 'Working Capital Certificate',
+    desc: 'Current Assets vs Current Liabilities — net Working Capital for banking and credit facility compliance.',
+    badge: 'New',
+    color: 'from-violet-500/10 to-purple-500/5',
+    iconBg: 'bg-violet-50',
+    iconColor: 'text-violet-600',
+  },
 ]
 
 const FEATURES = [
   {
     icon: Lock,
     title: 'Privacy First',
-    desc: 'CIN, PAN, GSTIN, Aadhaar & mobile numbers are redacted before the document reaches the AI model.',
+    desc: 'Auto-redacts CIN, PAN, GSTIN, Aadhaar & mobile. Draw custom boxes over any additional sensitive content before AI sees the document.',
     color: 'text-emerald-500',
     bg: 'bg-emerald-50',
   },
   {
     icon: Zap,
     title: 'Extracts in Seconds',
-    desc: 'Claude AI reads your PDF or Excel balance sheet and pulls exact figures instantly.',
+    desc: 'Claude AI reads your PDF or Excel balance sheet and pulls exact figures with per-field confidence scores instantly.',
     color: 'text-blue-500',
     bg: 'bg-blue-50',
   },
   {
     icon: Eye,
     title: 'Full Citation Trail',
-    desc: 'Every figure is traced back to its exact source line in the original document.',
+    desc: 'Every figure is traced to its exact source line in the document — full audit trail for every certificate generated.',
     color: 'text-violet-500',
     bg: 'bg-violet-50',
   },
   {
     icon: GitBranch,
-    title: 'Edit Before Download',
-    desc: 'Review, override values, and preview the live certificate before generating the final PDF.',
+    title: 'Live Edit & Preview',
+    desc: 'Override values, customise narrative, add UDIN, set a PDF password, and preview the certificate in real time.',
     color: 'text-amber-500',
     bg: 'bg-amber-50',
+  },
+  {
+    icon: Layers,
+    title: '7 Net Worth Methods',
+    desc: 'Book Value, Tangible NW, Companies Act, SEBI LODR, NAV, Consolidated & more — entity-aware method selection for Company, LLP, Partnership & Proprietorship.',
+    color: 'text-indigo-500',
+    bg: 'bg-indigo-50',
+  },
+  {
+    icon: GitCompareArrows,
+    title: 'Year-on-Year Analysis',
+    desc: 'Compare current year against prior year figures with trend indicators, ratio analysis, and YoY growth built in.',
+    color: 'text-purple-500',
+    bg: 'bg-purple-50',
+  },
+  {
+    icon: Mail,
+    title: 'Email to Client',
+    desc: 'Send the generated certificate directly to the client with a professional email — no manual download and re-attach.',
+    color: 'text-sky-500',
+    bg: 'bg-sky-50',
+  },
+  {
+    icon: History,
+    title: 'Certificate History',
+    desc: 'Every certificate generated is saved locally — revisit, re-download PDF or DOCX, and track all past certificates.',
+    color: 'text-rose-500',
+    bg: 'bg-rose-50',
   },
 ]
 
@@ -283,9 +361,9 @@ export default function Home() {
             style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-6 pt-20 pb-24">
+        <div className="relative max-w-6xl mx-auto px-6 pt-8 pb-16">
           {/* Nav */}
-          <nav className="flex items-center justify-between mb-16">
+          <nav className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-brand-accent/20 border border-brand-accent/30 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-brand-accent" />
@@ -395,7 +473,7 @@ export default function Home() {
               transition={{ delay: 0.6 }}
               className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-10 text-xs text-white/35 font-medium"
             >
-              {['PDF & Excel support', 'CIN / PAN / GSTIN redacted', 'PDF + DOCX download', 'No data stored'].map((t) => (
+              {['PDF & Excel support', 'Manual PDF redaction', '3 certificate types', '7 NW methods', 'PDF + DOCX + Email', 'UDIN & history'].map((t) => (
                 <span key={t} className="flex items-center gap-1.5">
                   <CheckCircle className="w-3 h-3 text-brand-accent/60" /> {t}
                 </span>
@@ -461,7 +539,7 @@ export default function Home() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             {CERT_TYPES.map((ct) => (
               <motion.div
@@ -486,7 +564,7 @@ export default function Home() {
       </section>
 
       {/* ── Features ── */}
-      <section className="py-20 max-w-5xl mx-auto px-6">
+      <section className="py-20 max-w-6xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -503,7 +581,7 @@ export default function Home() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-5"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
         >
           {FEATURES.map((f) => (
             <motion.div

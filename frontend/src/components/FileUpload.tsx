@@ -14,7 +14,7 @@ const ACCEPTED_TYPES: Record<string, string[]> = {
 }
 
 interface FileUploadProps {
-  onAfterUpload?: (fileId: string) => void
+  onAfterUpload?: (fileId: string, file: File) => void
 }
 
 export function FileUpload({ onAfterUpload }: FileUploadProps) {
@@ -45,7 +45,7 @@ export function FileUpload({ onAfterUpload }: FileUploadProps) {
 
         setTimeout(() => {
           if (onAfterUpload) {
-            onAfterUpload(response.file_id)
+            onAfterUpload(response.file_id, file)
           } else {
             setStep(2)
           }

@@ -44,3 +44,9 @@ Thumbs.db
 .idea/
 *.suo
 *.user
+
+# Generated certificate outputs
+backend/outputs/
+
+# MS Word temp files
+~$*

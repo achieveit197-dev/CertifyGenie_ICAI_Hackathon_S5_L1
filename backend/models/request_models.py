@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 
 EntityType = Literal["company", "llp", "partnership", "proprietorship"]
 NWMethod = Literal[
@@ -8,9 +8,20 @@ NWMethod = Literal[
 ]
 
 
+class ManualRedactionBox(BaseModel):
+    page_index: int = Field(..., description="0-based page index")
+    x0: float = Field(..., description="Left edge in PDF points")
+    y0: float = Field(..., description="Top edge in PDF points")
+    x1: float = Field(..., description="Right edge in PDF points")
+    y1: float = Field(..., description="Bottom edge in PDF points")
+
+
 class ExtractRequest(BaseModel):
     certificate_type: Literal["net_worth", "turnover", "working_capital"] = Field(
         default="net_worth", description="Type of certificate to generate"
+    )
+    manual_boxes: Optional[List[ManualRedactionBox]] = Field(
+        default=None, description="User-drawn redaction boxes applied on top of auto-redaction"
     )
 
 

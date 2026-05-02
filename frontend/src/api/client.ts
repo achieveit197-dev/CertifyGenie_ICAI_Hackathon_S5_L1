@@ -8,6 +8,7 @@ import type {
   EntityType,
   NetWorthMethodsResponse,
   HistoryEntry,
+  RedactionPayload,
 } from '../types'
 
 const HISTORY_KEY = 'certify_genie_history'
@@ -58,12 +59,40 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
 
 export const extractData = async (
   fileId: string,
-  certificateType: CertificateType = 'net_worth'
+  certificateType: CertificateType = 'net_worth',
+  manualBoxes?: RedactionPayload[]
 ): Promise<ExtractionResponse> => {
   const { data } = await api.post<ExtractionResponse>(`/extract/${fileId}`, {
     certificate_type: certificateType,
+    ...(manualBoxes && manualBoxes.length > 0 ? { manual_boxes: manualBoxes } : {}),
   })
   return data
+}
+
+export const fetchPreviewRedacted = async (fileId: string): Promise<string> => {
+  const res = await fetch(`/api/preview-redacted/${fileId}`)
+  if (!res.ok) throw new Error(`Preview failed: ${res.status}`)
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
+}
+
+export const applyManualRedaction = async (
+  fileId: string,
+  boxes: RedactionPayload[],
+  stripMetadata = false,
+): Promise<{ blob: Blob; summary: string }> => {
+  const res = await fetch(`/api/redact-manual/${fileId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ manual_boxes: boxes, strip_metadata: stripMetadata }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || `Server error ${res.status}`)
+  }
+  const blob = await res.blob()
+  const summary = res.headers.get('X-Redaction-Summary') || ''
+  return { blob, summary }
 }
 
 export const fetchNetWorthMethods = async (

@@ -508,6 +508,7 @@ def generate_net_worth_pdf(
     extracted, ca_details, cert_number, output_path,
     custom_narrative=None, additional_notes=None,
     custom_row_labels=None, udin="", nw_method_label="", nw_method_id="",
+    wc_purpose="", **kwargs,
 ):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm

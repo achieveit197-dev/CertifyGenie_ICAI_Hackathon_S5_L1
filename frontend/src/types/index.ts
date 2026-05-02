@@ -1,3 +1,5 @@
+export type { RedactionPayload, SelectionBox, DrawingState, DrawMode, ResizeHandle } from './redaction'
+
 export type CertificateType = 'net_worth' | 'turnover' | 'working_capital'
 export type FileType = 'pdf' | 'excel'
 export type ExtractionMode = 'text' | 'vision'
